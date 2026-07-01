@@ -1,45 +1,48 @@
-name: Linux SSH Server
+name: Minimal Ubuntu SSH Server
 
 on:
   workflow_dispatch:
 
 jobs:
-  linux-ssh:
+  minimal-ubuntu:
     runs-on: ubuntu-latest
     timeout-minutes: 999999
 
     steps:
-      - name: Update system and install tools
+      - name: Minimal System Setup
         run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y openssh-server curl
+          sudo apt update -qq
+          sudo apt upgrade -y -qq
+          sudo apt install -y openssh-server curl --no-install-recommends
+          sudo apt autoremove -y -qq
 
-      - name: Configure SSH
+      - name: Configure SSH Root Access
         run: |
-          sudo systemctl enable ssh
-          sudo systemctl start ssh
-          sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+          sudo systemctl enable --now ssh
+          sudo sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+          echo "root:YourSecurePassword123" | sudo chpasswd
           sudo systemctl restart ssh
 
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      - name: Connect to Tailscale
+      - name: Connect Tailscale
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=linux-ssh-${{ github.run_id }}
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=minimal-ssh-${{ github.run_id }}
 
       - name: Show Connection Info
         run: |
-          echo "=== SSH CONNECTION READY ==="
-          echo "IP: $(tailscale ip -4)"
-          echo "User: root"
-          echo "Use PuTTY or SSH with the IP above"
-          echo "============================="
+          echo "=== CONNECTION INFORMATION ==="
+          echo "Tailscale IP: $(tailscale ip -4)"
+          echo "Username: root"
+          echo "Password: YourSecurePassword123"
+          echo "================================="
+          echo "Connect using PuTTY with the IP above"
 
-      - name: Keep Server Running
+      - name: Keep Server Running Indefinitely
         run: |
-          echo "Server is running indefinitely..."
+          echo "Minimal server is running indefinitely..."
           while true; do
             sleep 300
           done
